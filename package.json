@@ -1,0 +1,21 @@
+{
+  "name": "beatstronghold",
+  "version": "0.1.0",
+  "description": "My Screeps Bot",
+  "keywords": [
+    "screeps"
+  ],
+  "author": "keqing",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsdown",
+    "format": "oxfmt --write"
+  },
+  "devDependencies": {
+    "@types/screeps": "^3.4.0",
+    "oxfmt": "^0.71.0",
+    "tsdown": "^0.23.0"
+  },
+  "packageManager": "pnpm@12.8.1"
+}
