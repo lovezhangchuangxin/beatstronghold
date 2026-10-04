@@ -7,6 +7,8 @@ interface RangeMemory {
 }
 
 const RANGEMAX = 24;
+const STARTTIME = Game.time;
+const AFTER = 500;
 
 /**
  * 运行所有的蓝球
@@ -66,10 +68,6 @@ const rangeAttack = (creep: Creep) => {
   const structures = creep.room.find(FIND_HOSTILE_STRUCTURES);
   const targets = [...hostiles, ...structures];
   const targetPos = creep.pos.findClosestByRange(targets);
-  if (!targetPos || creep.pos.getRangeTo(targetPos) <= 1) {
-    creep.rangedMassAttack();
-    return;
-  }
 
   // 如果够得着中间的核心直接打
   if (creep.pos.getRangeTo(25, 25) <= 3) {
@@ -78,6 +76,11 @@ const rangeAttack = (creep: Creep) => {
       creep.rangedAttack(core);
       return;
     }
+  }
+
+  if (!targetPos || creep.pos.getRangeTo(targetPos) <= 1) {
+    creep.rangedMassAttack();
+    return;
   }
 
   // 有2个在2格范围的建筑就 mass
@@ -112,13 +115,19 @@ const rangeMove = (creep: Creep, targetPos: RoomPosition) => {
           (s) => s.structureType !== STRUCTURE_ROAD && s.structureType !== STRUCTURE_CONTAINER,
         );
       if (roomName === GET_STRONGHOLD_ROOM()) {
-        structures.forEach(({ pos }) => {
-          for (let x = pos.x - 1; x <= pos.x + 1; x++) {
-            for (let y = pos.y - 1; y <= pos.y + 1; y++) {
-              costs.set(x, y, 0xff);
+        if (Game.time >= STARTTIME + AFTER) {
+          structures.forEach(({ pos }) => {
+            for (let x = pos.x - 1; x <= pos.x + 1; x++) {
+              for (let y = pos.y - 1; y <= pos.y + 1; y++) {
+                costs.set(x, y, 0xff);
+              }
             }
-          }
-        });
+          });
+        } else {
+          structures.forEach(({ pos }) => {
+            costs.set(pos.x, pos.y, 0xff);
+          });
+        }
       } else {
         structures.forEach(({ pos }) => {
           costs.set(pos.x, pos.y, 0xff);
@@ -260,14 +269,36 @@ const getSafePoses = (room: Room, structures: Structure[]) => {
     }
   }
 
-  firstBlank.forEach(([x, y]) => {
-    result.delete(`${x}/${y}`);
-  });
+  if (Game.time >= STARTTIME + AFTER) {
+    firstBlank.forEach(([x, y]) => {
+      result.delete(`${x}/${y}`);
+    });
 
-  room._safePoses = [...result.values()]
-    .map((posStr) => posStr.split("/").map((n) => +n))
-    .filter(([, y]) => y >= 23) as [number, number][];
-  return room._safePoses.sort((a, b) => a[0] - b[0]);
+    room._safePoses = [...result.values()]
+      .map((posStr) => posStr.split("/").map((n) => +n))
+      .filter(([, y]) => y >= 23) as [number, number][];
+    return room._safePoses.sort((a, b) => a[0] - b[0]);
+  }
+
+  // 获取一个位置上下左右的建筑数
+  const getNearStructure = (pos: [number, number]) => {
+    const x = pos[0];
+    const y = pos[1];
+    const a = `${x - 1}/${y}`;
+    const b = `${x + 1}/${y}`;
+    const c = `${x}/${y - 1}`;
+    const d = `${x}/${y + 1}`;
+    return (
+      +structurePosSet.has(a) +
+      +structurePosSet.has(b) +
+      +structurePosSet.has(c) +
+      +structurePosSet.has(d)
+    );
+  };
+
+  return firstBlank
+    .filter((s) => !structurePosSet.has(`${s[0]}/${s[1]}`) && getNearStructure(s) < 2)
+    .filter(([, y]) => y >= 23);
 };
 
 declare global {
